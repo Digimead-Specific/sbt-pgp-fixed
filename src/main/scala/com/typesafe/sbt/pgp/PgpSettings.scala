@@ -54,7 +54,17 @@ object PgpSettings {
           val ctor = configClass.getConstructor(classOf[Boolean], classOf[Boolean], classOf[Int])
           ctor.newInstance(Boolean.box(false), Boolean.box(false), Int.box(1)).asInstanceOf[EvaluateConfig]
       }
-      EvaluateTask.runTask(task, state, streams, extracted.structure.index.triggers, config)(EvaluateTask.nodeView(state, streams))
+      // one more little hack
+      val nv = try {
+        import Execute._
+        EvaluateTask.asInstanceOf[{ def nodeView[HL <: HList](state: State, streams: Streams, extraDummies: KList[Task, HL], extraValues: HL): NodeView[Task] }].
+          nodeView(state, streams, KNil, HNil)
+      } catch {
+        case _: Throwable =>
+          EvaluateTask.asInstanceOf[{ def nodeView[HL <: HList](state: State, streams: Streams, roots: Seq[ScopedKey[_]], extraDummies: KList[Task, HL], extraValues: HL): NodeView[Task] }].
+            nodeView(state, streams, Nil, KNil, HNil)
+      }
+      EvaluateTask.runTask(task, state, streams, extracted.structure.index.triggers, config)(nv)
     }
     newstate
   }

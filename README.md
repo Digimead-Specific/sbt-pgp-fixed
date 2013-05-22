@@ -2,6 +2,27 @@
 
 This plugin aims to provide PGP signing for XSBT (SBT 0.12+ versions).  The plugin currently uses the command line GPG process with the option to use the Bouncy Castle java security library for PGP. 
 
+# Modifications
+
+Fixed version of sbt-pgp based on 0.9-SNAPSHOT. Support 0.11.x 0.12.x 0.13.x(SNAPSHOT) without build configuration modifications.
+
+Just add to your Build.scala something like:
+
+    import sbt._
+    object PluginDef extends Build {
+      override def projects = Seq(root)
+      lazy val root = Project("plugins", file(".")) dependsOn(pgp)
+      lazy val pgp = uri("git://github.com/ezh/sbt-pgp-fixed.git#0.99")
+    }
+
+and
+
+    com.typesafe.sbt.SbtPgp.activate
+
+to you project configuration. Now you may implement SBT crossbuild 0.11+ for you plugin easily ;-)
+
+Best regards, Ezh.
+
 ## Usage
 
 **WARNING** The PGP plugin as of 0.8 *NO LONGER* signs artifacts using the `publish` and `publish-local` task.  To sign artifacts, please use `publish-signed` and `publish-local-signed` tasks.
