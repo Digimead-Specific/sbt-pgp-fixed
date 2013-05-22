@@ -21,7 +21,7 @@ and
 
 to you project configuration. Now you may implement SBT crossbuild 0.11+ for you plugin easily ;-)
 
-P.S. 0.13 worked only with local installation(pubish-local). When I tried to use web install I got:
+P.S. 0.13 worked only with local installation(publish-local). When I tried to use web install I got:
 
     [info] Compiling 1 Scala source to /home/ezh/.sbt/0.13.0-20130520-052156/staging/7ea980335232cf0370da/project/project/target/scala-2.10/sbt-0.13.0-20130520-052156/classes...
     [error] Invalid project ID: Expected letter
