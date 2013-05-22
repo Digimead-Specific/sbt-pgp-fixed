@@ -1,7 +1,6 @@
 package com.typesafe.sbt
 package pgp
 
-
 import sbt._
 import Keys._
 import sbt.Project.Initialize
@@ -24,34 +23,42 @@ object PgpSettings {
   def pgpReadOnly = PgpKeys.pgpReadOnly in Global
   def pgpPublicRing = PgpKeys.pgpPublicRing in Global
   def pgpSecretRing = PgpKeys.pgpSecretRing in Global
-  
+
   /** Configuration for GPG command line */
-  lazy val gpgConfigurationSettings: Seq[Setting[_]] = Seq( 
+  lazy val gpgConfigurationSettings: Seq[Setting[_]] = Seq(
     PgpKeys.useGpg := false,
     PgpKeys.useGpgAgent := false,
-    PgpKeys.gpgCommand := (if(isWindows) "gpg.exe" else "gpg")
-  )
-  
+    PgpKeys.gpgCommand := (if (isWindows) "gpg.exe" else "gpg"))
+
   lazy val pgpCommand = Command("pgp-cmd") {
-    state => 
+    state =>
       val extracted = Project.extract(state)
       val ctx = extracted.get(pgpStaticContext)
       Space ~> cli.PgpCommand.parser(ctx)
   } { (state, cmd) =>
     val extracted = Project.extract(state)
     val readOnly = extracted get pgpReadOnly
-    if(readOnly && !cmd.isReadOnly) sys.error("Cannot modify keyrings when in read-only mode.  Run `set pgpReadOnly := false` before running this command.")
+    if (readOnly && !cmd.isReadOnly) sys.error("Cannot modify keyrings when in read-only mode.  Run `set pgpReadOnly := false` before running this command.")
     // Create a new task that executes the command.
     val task = extracted get pgpCmdContext map (cmd run) named ("pgp-cmd-" + cmd.getClass.getSimpleName)
-    import EvaluateTask._
-    val (newstate, _) = withStreams(extracted.structure, state) { streams =>
-      
-      val config = EvaluateConfig(false, defaultRestrictions(1), false)
-      EvaluateTask.runTask(task, state, streams, extracted.structure.index.triggers, config)(nodeView(state, streams, Nil))
+    val (newstate, _) = EvaluateTask.withStreams(extracted.structure, state) { streams =>
+      // little hack for simple build tool :-)
+      val configClass = getClass.getClassLoader().loadClass("sbt.EvaluateConfig")
+      val config = try {
+        val ctor = configClass.getConstructor(classOf[Boolean], classOf[Seq[_]], classOf[Boolean])
+        val arg = EvaluateTask.asInstanceOf[{ def defaultRestrictions(maxWorkers: Int): Seq[_] }].defaultRestrictions(1)
+        ctor.newInstance(Boolean.box(false), arg, Boolean.box(false)).asInstanceOf[EvaluateConfig]
+      } catch {
+        case _: Throwable =>
+          // throw exception anyway, we only know 2 possible situations
+          val ctor = configClass.getConstructor(classOf[Boolean], classOf[Boolean], classOf[Int])
+          ctor.newInstance(Boolean.box(false), Boolean.box(false), Int.box(1)).asInstanceOf[EvaluateConfig]
+      }
+      EvaluateTask.runTask(task, state, streams, extracted.structure.index.triggers, config)(EvaluateTask.nodeView(state, streams))
     }
     newstate
   }
-  
+
   /** Configuration for BC JVM-local PGP */
   lazy val nativeConfigurationSettings: Seq[Setting[_]] = Seq(
     PgpKeys.pgpPassphrase := None,
@@ -69,13 +76,11 @@ object PgpSettings {
       case _ => file(System.getProperty("user.home")) / ".sbt" / "gpg" / "secring.asc"
     },
     PgpKeys.pgpStaticContext <<= (PgpKeys.pgpPublicRing, PgpKeys.pgpSecretRing) apply SbtPgpStaticContext.apply,
-    PgpKeys.pgpCmdContext <<= (PgpKeys.pgpStaticContext, PgpKeys.pgpPassphrase, streams) map SbtPgpCommandContext.apply
-  )
-  
-  
+    PgpKeys.pgpCmdContext <<= (PgpKeys.pgpStaticContext, PgpKeys.pgpPassphrase, streams) map SbtPgpCommandContext.apply)
+
   /** Helper to initialize the BC PgpSigner */
   private[this] def bcPgpSigner: Initialize[Task[PgpSigner]] =
-    (pgpCmdContext, pgpSigningKey) map (new BouncyCastlePgpSigner(_,_))
+    (pgpCmdContext, pgpSigningKey) map (new BouncyCastlePgpSigner(_, _))
   /** Helper to initialize the GPG PgpSigner */
   private[this] def gpgSigner: Initialize[Task[PgpSigner]] =
     (gpgCommand, useGpgAgent, pgpSigningKey) map (new CommandLineGpgSigner(_, _, _))
@@ -85,8 +90,9 @@ object PgpSettings {
   /** Helper to initialize the GPG PgpVerifier */
   private[this] def gpgVerifier: Initialize[Task[PgpVerifier]] =
     gpgCommand map (new CommandLineGpgVerifier(_))
-     
-  /** These are all the configuration related settings that are common
+
+  /**
+   * These are all the configuration related settings that are common
    * for a multi-project build, and can be re-used on
    * ThisBuild or maybe Global.
    */
@@ -94,11 +100,11 @@ object PgpSettings {
     // TODO - move these to the signArtifactSettings?
     skip in pgpSigner <<= (skip in pgpSigner) ?? false,
     pgpSigner <<= switch(useGpg, gpgSigner, bcPgpSigner),
-    pgpVerifier <<= switch(useGpg, gpgVerifier, bcPgpVerifier)
-  ) 
-  /** Configuration for signing artifacts.  If you use new scopes for
+    pgpVerifier <<= switch(useGpg, gpgVerifier, bcPgpVerifier))
+  /**
+   * Configuration for signing artifacts.  If you use new scopes for
    * packagedArtifacts, you need to add this in that scope to your build.
-   * 
+   *
    * Right now, this also adds duplicate "publish" tasks that will ensure signed
    * artifacts.   While this isn't as friendly to other plugins that want to
    * use our signed artifacts in normal publish flow, it should be more user friendly.
@@ -109,20 +115,19 @@ object PgpSettings {
         if (!skipZ) {
           artifacts flatMap {
             case (art, file) =>
-              Seq(art                                                -> file, 
-                  art.copy(extension = art.extension + gpgExtension) -> r.sign(file, new File(file.getAbsolutePath + gpgExtension), s))
+              Seq(art -> file,
+                art.copy(extension = art.extension + gpgExtension) -> r.sign(file, new File(file.getAbsolutePath + gpgExtension), s))
           }
         } else artifacts
     },
     publishSignedConfiguration <<= (signedArtifacts, publishTo, publishMavenStyle, deliver, checksums in publish, ivyLoggingLevel) map { (arts, publishTo, mavenStyle, ivyFile, checks, level) =>
-      Classpaths.publishConfig(arts, if(mavenStyle) None else Some(ivyFile), resolverName = Classpaths.getPublishTo(publishTo).name, checksums = checks, logging = level)
+      Classpaths.publishConfig(arts, if (mavenStyle) None else Some(ivyFile), resolverName = Classpaths.getPublishTo(publishTo).name, checksums = checks, logging = level)
     },
     publishSigned <<= Classpaths.publishTask(publishSignedConfiguration, deliver),
     publishLocalSignedConfiguration <<= (signedArtifacts, deliverLocal, checksums in publishLocal, ivyLoggingLevel) map {
-      (arts, ivyFile, checks, level) => Classpaths.publishConfig(arts, Some(ivyFile), checks, logging = level )
+      (arts, ivyFile, checks, level) => Classpaths.publishConfig(arts, Some(ivyFile), checks, logging = level)
     },
-    publishLocalSigned <<= Classpaths.publishTask(publishLocalSignedConfiguration, deliver)
-  )
+    publishLocalSigned <<= Classpaths.publishTask(publishLocalSignedConfiguration, deliver))
   /** Settings used to verify signatures on dependent artifacts. */
   lazy val verifySettings: Seq[Setting[_]] = Seq(
     // TODO - This is checking SBT and its plugins signatures..., maybe we can have this be a separate config or something.
@@ -130,21 +135,20 @@ object PgpSettings {
       val pluginIDs: Seq[ModuleID] = lb.units(ref.build).unit.plugins.fullClasspath.flatMap(_ get moduleID.key)
       GetSignaturesModule(pid, sbtDep +: pluginIDs, Configurations.Default :: Nil)
     },*/
-    signaturesModule in updatePgpSignatures <<= (projectID, libraryDependencies) map { ( pid, deps) =>
+    signaturesModule in updatePgpSignatures <<= (projectID, libraryDependencies) map { (pid, deps) =>
       GetSignaturesModule(pid, deps, Configurations.Default :: Nil)
     },
-    updatePgpSignatures <<= (ivySbt, 
-                          signaturesModule in updatePgpSignatures, 
-                          updateConfiguration, 
-                          ivyScala, 
-                          target in LocalRootProject, 
-                          appConfiguration, 
-                          streams) map { (is, mod, c, ivyScala, out, app, s) =>
-      PgpSignatureCheck.resolveSignatures(is, GetSignaturesConfiguration(mod, c, ivyScala), s.log)
-    },
-    checkPgpSignatures <<= (updatePgpSignatures, pgpVerifier, streams) map PgpSignatureCheck.checkSignaturesTask
-  )
-  
+    updatePgpSignatures <<= (ivySbt,
+      signaturesModule in updatePgpSignatures,
+      updateConfiguration,
+      ivyScala,
+      target in LocalRootProject,
+      appConfiguration,
+      streams) map { (is, mod, c, ivyScala, out, app, s) =>
+        PgpSignatureCheck.resolveSignatures(is, GetSignaturesConfiguration(mod, c, ivyScala), s.log)
+      },
+    checkPgpSignatures <<= (updatePgpSignatures, pgpVerifier, streams) map PgpSignatureCheck.checkSignaturesTask)
+
   lazy val globalSettings: Seq[Setting[_]] = inScope(Global)(gpgConfigurationSettings ++ nativeConfigurationSettings ++ signVerifyConfigurationSettings)
   /** Settings this plugin defines. TODO - require manual setting of these... */
   lazy val projectSettings = signingSettings ++ verifySettings ++ Seq(commands += pgpCommand)
