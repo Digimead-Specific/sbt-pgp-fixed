@@ -1,11 +1,6 @@
 import sbt._
 import Keys._
 
-import com.typesafe.sbt.SbtSite.site
-import com.typesafe.sbt.SbtSite.SiteKeys._
-import com.typesafe.sbt.SbtGhPages.ghpages
-import com.typesafe.sbt.SbtGit.git
-
 /** Helper object for creating Sonatype OSSRH metadata. */ 
 // TODO - Make this a plugin
 object Sonatype {
@@ -76,7 +71,7 @@ object GpgBuild extends Build {
     sbtPlugin := true,
     organization := "com.typesafe.sbt",
     name := "sbt-pgp"
-  ) settings(websiteSettings:_*)  settings(
+  ) settings(
     //tmp workaround
     libraryDependencies += "net.databinder" % "dispatch-http_2.9.1" % "0.8.6") aggregate(library)
   /* settings(ScriptedPlugin.scriptedSettings:_*) */
@@ -92,15 +87,4 @@ object GpgBuild extends Build {
       licenses=Seq(Sonatype.BSD),
       developers=Seq(Sonatype.Developer("jsuereth", "Josh Suereth"))):_*)
 
-
-  def websiteSettings: Seq[Setting[_]] = (
-    site.settings ++ 
-    ghpages.settings ++ 
-    site.jekyllSupport() ++ 
-    site.includeScaladoc() ++ 
-    Seq(
-      git.remoteRepo := "git@github.com:sbt/sbt-pgp.git",
-      site.addMappingsToSiteDir(mappings in packageDoc in Compile in library, "library/latest/api")
-    )
-  )
 }

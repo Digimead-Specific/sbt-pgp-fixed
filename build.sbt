@@ -1,3 +1,7 @@
+import sbt.dependency.manager._
+
+activateDependencyManager
+
 resolvers ++= Seq(
   Resolver.url("typesafe-ivy-releases-for-online-crossbuild", url("http://repo.typesafe.com/typesafe/ivy-releases/"))(Resolver.defaultIvyPatterns),
   Resolver.url("typesafe-ivy-snapshots-for-online-crossbuild", url("http://repo.typesafe.com/typesafe/ivy-snapshots/"))(Resolver.defaultIvyPatterns),
