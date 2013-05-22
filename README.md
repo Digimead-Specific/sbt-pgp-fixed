@@ -4,7 +4,7 @@ This plugin aims to provide PGP signing for XSBT (SBT 0.12+ versions).  The plug
 
 # Modifications
 
-Fixed version of sbt-pgp based on 0.9-SNAPSHOT. Support 0.11.x 0.12.x 0.13.x(SNAPSHOT) without build configuration modifications.
+Fixed version of sbt-pgp based on 0.9-SNAPSHOT. Support 0.11.x 0.12.x [0.13.x(SNAPSHOT) in progress] without build configuration modifications.
 
 Just add to your Build.scala something like:
 
@@ -12,7 +12,7 @@ Just add to your Build.scala something like:
     object PluginDef extends Build {
       override def projects = Seq(root)
       lazy val root = Project("plugins", file(".")) dependsOn(pgp)
-      lazy val pgp = uri("git://github.com/ezh/sbt-pgp-fixed.git#0.99")
+      lazy val pgp = uri("git://github.com/ezh/sbt-pgp-fixed.git")
     }
 
 and
