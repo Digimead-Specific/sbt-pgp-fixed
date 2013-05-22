@@ -41,7 +41,7 @@ object PgpSettings {
     if (readOnly && !cmd.isReadOnly) sys.error("Cannot modify keyrings when in read-only mode.  Run `set pgpReadOnly := false` before running this command.")
     // Create a new task that executes the command.
     val task = extracted get pgpCmdContext map (cmd run) named ("pgp-cmd-" + cmd.getClass.getSimpleName)
-    val (newstate, _) = EvaluateTask.withStreams(extracted.structure, state) { streams =>
+    val newstate = EvaluateTask.withStreams(extracted.structure, state) { streams =>
       // little hack for simple build tool :-)
       val configClass = getClass.getClassLoader().loadClass("sbt.EvaluateConfig")
       val config = try {
@@ -61,10 +61,12 @@ object PgpSettings {
           nodeView(state, streams, KNil, HNil)
       } catch {
         case _: Throwable =>
+          import Execute._
           EvaluateTask.asInstanceOf[{ def nodeView[HL <: HList](state: State, streams: Streams, roots: Seq[ScopedKey[_]], extraDummies: KList[Task, HL], extraValues: HL): NodeView[Task] }].
             nodeView(state, streams, Nil, KNil, HNil)
       }
-      EvaluateTask.runTask(task, state, streams, extracted.structure.index.triggers, config)(nv)
+      val (a, b) = EvaluateTask.runTask(task, state, streams, extracted.structure.index.triggers, config)(nv)
+      a.asInstanceOf[State]
     }
     newstate
   }
