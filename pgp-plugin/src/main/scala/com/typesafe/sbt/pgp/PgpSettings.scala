@@ -58,25 +58,28 @@ object PgpSettings {
       // SBT 0.11 nodeView has 4 arguments, KList has 2
       // SBT 0.12 nodeView has 5 arguments, KList has 2
       // SBT 0.13 nodeView has 4 arguments, KList has 1
-      val method = EvaluateTask.getClass().getMethods().find(_.getName() == "nodeView") getOrElse (error("Unable to find method 'nodeView' in object EvaluateTask"))
-      val nv = if (method.getParameterTypes().length == 4) {
-        import Execute._
-        if (method.getParameterTypes()(2) == classOf[Seq[_]]) {
-          // 0.13.x
-          val dmClazz = this.getClass.getClassLoader().loadClass("sbt.std.Transform$DummyTaskMap")
-          val dmCtor = dmClazz.getConstructor(classOf[List[_]])
-          val dm = dmCtor.newInstance(Nil).asInstanceOf[AnyRef]
-          method.invoke(EvaluateTask, state, streams, Nil, dm).asInstanceOf[NodeView[Task]]
-        } else {
-          // 0.11.x
-          method.invoke(EvaluateTask, state, streams, KNil, HNil).asInstanceOf[NodeView[Task]]
-        }
-      } else {
-        // 0.12
-        import Execute._
-        method.invoke(EvaluateTask, state, streams, Nil, KNil, HNil).asInstanceOf[NodeView[Task]]
-      }
+//      val method = EvaluateTask.getClass().getMethods().find(_.getName() == "nodeView") getOrElse (error("Unable to find method 'nodeView' in object EvaluateTask"))
+//      val nv = {
+//      if (method.getParameterTypes().length == 4) {
+//        if (method.getParameterTypes()(2) == classOf[Seq[_]]) {
+//          // 0.13.x
+//          val dmClazz = this.getClass.getClassLoader().loadClass("sbt.std.Transform$DummyTaskMap")
+//          val dmCtor = dmClazz.getConstructor(classOf[List[_]])
+//          val dm = dmCtor.newInstance(Nil).asInstanceOf[AnyRef]
+//          method.invoke(EvaluateTask, state, streams, Nil, dm)//.asInstanceOf[NodeView[Task]]
+//        } else {
+//          import Execute._
+//          // 0.11.x
+//          method.invoke(EvaluateTask, state, streams, KNil, HNil).asInstanceOf[NodeView[Task]]
+//        }
+//      } else {
+//        // 0.12
+//        import Execute._
+//        method.invoke(EvaluateTask, state, streams, Nil, KNil, HNil).asInstanceOf[NodeView[Task]]
+//      }
+//      }
       // WBR Ezh :-)
+      val nv = EvaluateTask.nodeView(state, streams, Nil, new sbt.std.Transform.DummyTaskMap(Nil))
       val (a, b) = EvaluateTask.runTask(task, state, streams, extracted.structure.index.triggers, config)(nv)
       a.asInstanceOf[State]
     }

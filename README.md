@@ -1,6 +1,9 @@
-# PGP Plugin
+# SBT-PGP Plugin
 
-This plugin aims to provide PGP signing for XSBT (SBT 0.12+ versions).  The plugin currently uses the command line GPG process with the option to use the Bouncy Castle java security library for PGP. 
+This plugin aims to provide PGP signing for versions of SBT >= 0.12.
+The plugin currently uses the command line GPG process with the option to use the Bouncy Castle java security library for PGP.
+
+Please see the [documentation](http://scala-sbt.org/sbt-pgp) for more information.
 
 # Modifications
 
@@ -56,4 +59,4 @@ The plugin should wire into all your projects and sign files before they are dep
 
 No other configuration should be necessary if you have a `gpg` generated key available.
 
-Please see the [documentation](http://scala-sbt.org/sbt-pgp) for more information on usage.
+Please see the [documentation](http://scala-sbt.org/sbt-pgp) for more information.

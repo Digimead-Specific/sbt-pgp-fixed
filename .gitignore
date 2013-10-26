@@ -1,6 +1,22 @@
-target/
+!.gitignore
+
+*.class
+
+# Build directories #
+bin/
 boot/
+build/
+project/target/
+project/project/target/
+project-*/
+target/
+
+# Package files #
+*.jar
+*.war
+*.ear
+
+# Hidden and service files #
 *~
-.classpath
-.project
-.scala_dependencies
+.*
+_*
