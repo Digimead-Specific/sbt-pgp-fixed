@@ -5,7 +5,3 @@ resolvers ++= Seq(
   Resolver.url("typesafe-repository-for-sbt-pgp-build", url("http://typesafe.artifactoryonline.com/typesafe/ivy-releases/"))(Resolver.defaultIvyPatterns),
   Resolver.url("typesafe-shapshots-for-sbt-pgp-build", url("http://typesafe.artifactoryonline.com/typesafe/ivy-snapshots/"))(Resolver.defaultIvyPatterns),
   Resolver.url("sbt-plugin-releases-for-sbt-pgp-build", url("http://scalasbt.artifactoryonline.com/scalasbt/sbt-plugin-releases/"))(Resolver.ivyStylePatterns))
-
-addSbtPlugin("com.typesafe.sbt" % "sbt-ghpages" % "0.5.1")
-
-addSbtPlugin("com.typesafe.sbt" % "sbt-git" % "0.6.2")

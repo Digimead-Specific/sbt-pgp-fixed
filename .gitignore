@@ -6,6 +6,7 @@
 bin/
 boot/
 build/
+lib_managed/
 project/target/
 project/project/target/
 project-*/

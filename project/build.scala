@@ -1,67 +1,28 @@
 import sbt._
 import Keys._
 
-import com.typesafe.sbt.SbtSite.site
-import com.typesafe.sbt.SbtSite.SiteKeys._
-import com.typesafe.sbt.SbtGhPages.ghpages
-import com.typesafe.sbt.SbtGit._
-
 object SbtPgpBuild extends Build {
-
   override val settings: Seq[Setting[_]] =
-    super.settings ++ versionWithGit
-
-  // Sonatype Publishing gunk
-  def sonatypePublishSettings: Seq[Setting[_]] = Seq(
-    // If we want on maven central, we need to be in maven style.
-    publishMavenStyle := true,
-    publishArtifact in Test := false,
-    // The Nexus repo we're publishing to.
-    publishTo <<= version { (v: String) =>
-      val nexus = "https://oss.sonatype.org/"
-      if (v.trim.endsWith("SNAPSHOT")) Some("snapshots" at nexus + "content/repositories/snapshots") 
-      else                             Some("releases"  at nexus + "service/local/staging/deploy/maven2")
-    },
-    // Maven central cannot allow other repos.  We're ok here because the artifacts we
-    // we use externally are *optional* dependencies.
-    pomIncludeRepository := { x => false },
-    licenses += ("BSD" -> url("http://www.opensource.org/licenses/bsd-license.php")),
-    homepage := Some(url("http://scala-sbt.org/sbt-pgp/")),
-    scmInfo := Some(ScmInfo(url("http://github.com/sbt/sbt-pgp/"),"git://github.com/sbt/sbt-pgp.git")),
-    // Maven central wants some extra metadata to keep things 'clean'.
-    pomExtra := (
-      <developers>
-        <developer>
-          <id>jsuereth</id>
-          <name>Josh Suereth</name>
-        </developer>
-      </developers>)
-  )
-
-  // Website publishing settings.
-  def websiteSettings: Seq[Setting[_]] = (
-    site.settings ++ 
-    ghpages.settings ++ 
-    site.jekyllSupport() ++ 
-    site.includeScaladoc() ++ 
-    Seq(
-      git.remoteRepo := "git@github.com:sbt/sbt-pgp.git",
-      site.addMappingsToSiteDir(mappings in packageDoc in Compile in library, "library/latest/api")
-    )
-  )
+    super.settings
 
   // Common Settings
   val commonSettings: Seq[Setting[_]] =
-   Seq(
-    organization := "com.jsuereth",
-    publishMavenStyle := false,
-    publishTo <<= (version) { version: String =>
-       val scalasbt = "http://repo.scala-sbt.org/scalasbt/"
-       val (name, u) = if (version.contains("-SNAPSHOT")) ("sbt-plugin-snapshots", scalasbt+"sbt-plugin-snapshots")
-                       else ("sbt-plugin-releases", scalasbt+"sbt-plugin-releases")
-       Some(Resolver.url(name, url(u))(Resolver.ivyStylePatterns))
+    Seq(
+      licenses := Seq("BSD" -> url("http://www.opensource.org/licenses/bsd-license.php")),
+      organization := "org.digimead",
+      organizationHomepage := Some(url("http://digimead.org")),
+      homepage := Some(url("https://github.com/digimead-specific/sbt-pgp")),
+      scalacOptions ++= Seq("-encoding", "UTF-8", "-deprecation", "-unchecked", "-Xcheckinit", "-feature") ++
+        (if (true || (System getProperty "java.runtime.version" startsWith "1.7")) Seq() else Seq("-optimize")), // -optimize fails with jdk7
+      // http://vanillajava.blogspot.ru/2012/02/using-java-7-to-target-much-older-jvms.html
+      javacOptions ++= Seq("-Xlint:unchecked", "-Xlint:deprecation", "-source", "1.6", "-target", "1.6"),
+      version := "0.8.2"
+    ) ++ {
+      if (sys.env.contains("XBOOTCLASSPATH"))
+        Seq(javacOptions += "-Xbootclasspath:" + sys.env("XBOOTCLASSPATH"))
+      else
+        Seq()
     }
-  )
 
   // Dependencies
   val dispatchDependency: Setting[_] =
@@ -71,29 +32,24 @@ object SbtPgpBuild extends Build {
     }
   val bouncyCastlePgp = "org.bouncycastle" % "bcpg-jdk15on" % "1.49"
 
-
   // Root project.  Just makes website and aggregates others.
   val root = (
-    Project("sbt-pgp", file(".")) 
+    Project("sbtPGP", file("."))
     aggregate(plugin, library)
-    settings(websiteSettings:_*)
-    settings(
-      publishLocal := (),
-      publish := ()
-    )
+    settings(commonSettings:_*)
   )
 
   // The sbt plugin.
-  lazy val plugin = Project("plugin", file("pgp-plugin")) dependsOn(library) settings(commonSettings:_*) settings(
+  lazy val plugin = Project("plugin", file("plugin")) dependsOn(library) settings(commonSettings:_*) settings(
     sbtPlugin := true,
-    organization := "com.typesafe.sbt",
+    description := "The sbt-pgp plugin provides PGP signing",
     name := "sbt-pgp"
-  ) settings(websiteSettings:_*)  settings(dispatchDependency)
+  ) settings(dispatchDependency)
 
   // The library of PGP functions.
-  lazy val library = Project("library", file("gpg-library")) settings(commonSettings:_*) settings(
+  lazy val library = Project("library", file("library")) settings(commonSettings:_*) settings(
     name := "gpg-library",
     libraryDependencies += bouncyCastlePgp,
     dispatchDependency
-  ) settings(sonatypePublishSettings:_*)
+  )
 }
